@@ -17,8 +17,10 @@ var filterCity = '', filterTown = '';
 var filterExtent = false;
 function pointStyle(f) {
   var p = f.getProperties(), color = '', stroke, radius;
-  switch(p.類型) {
+  switch (p.類型) {
     case '寺廟':
+    case '宗祠基金會':
+    case '宗祠':
       color = '#ceaf30';
       break;
     case '教會':
@@ -26,9 +28,6 @@ function pointStyle(f) {
       break;
     case '基金會':
       color = '#00a6b5';
-      break;
-    case '宗祠':
-      color = '#ceaf30';
       break;
     default:
       color = '#ff0000';
@@ -175,8 +174,8 @@ map.on('singleclick', function (evt) {
         var lonLat = ol.proj.toLonLat(p.geometry.getCoordinates());
         var message = '<table class="table table-dark">';
         message += '<tbody>';
-        for(k in p) {
-          if(k !== 'geometry') {
+        for (k in p) {
+          if (k !== 'geometry') {
             message += '<tr><th scope="row" style="width: 100px;">' + k + '</th><td>' + p[k] + '</td></tr>';
           }
         }
