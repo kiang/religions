@@ -101,7 +101,7 @@ function countyStyle(f) {
   if (selectedCounty === p.COUNTYNAME) {
     return null;
   }
-  var color = '#ffffff';
+  var color = 'rgba(255,255,255,0.6)';
   var strokeWidth = 1;
   var strokeColor = 'rgba(0,0,0,0.3)';
   var cityKey = p.COUNTYNAME;
