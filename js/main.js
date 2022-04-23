@@ -15,8 +15,13 @@ for (var z = 0; z < 20; ++z) {
 var cityList = {};
 var filterCity = '', filterTown = '';
 var filterExtent = false;
+var selectedGod = '';
+var emptyStyle = new ol.style.Style();
 function pointStyle(f) {
   var p = f.getProperties(), color = '', stroke, radius;
+  if (selectedGod !== '' && (!p.主祀神祇 || p.主祀神祇 !== selectedGod)) {
+    return emptyStyle;
+  }
   switch (p.類型) {
     case '寺廟':
     case '宗祠基金會':
@@ -253,3 +258,18 @@ $('#btn-geolocation').click(function () {
   }
   return false;
 });
+
+var gods = '福德正神,釋迦牟尼佛,天上聖母,玄天上帝,關聖帝君,觀世音菩薩,觀音佛祖,保生大帝,五府千歲,池府千歲,三山國王,明明上帝,中壇元帥,清水祖師,三官大帝,神農大帝,李府千歲,觀音菩薩,瑤池金母,北極玄天上帝,阿彌陀佛,廣澤尊王,土地公,開漳聖王,三寶佛,地藏王菩薩,玉皇大帝,朱府千歲,媽祖,吳府千歲,西方三聖,玉皇上帝,大眾爺,真武大帝,文衡聖帝,孚佑帝君,溫府千歲,觀音大士,九天玄女,西王金母,濟公活佛,王母娘娘,三府王爺,池府王爺,太子爺';
+var godsList = gods.split(',');
+var godsOptions = '<option value="">顯示全部</option>';
+for (k in godsList) {
+  godsOptions += '<option value="' + godsList[k] + '">' + godsList[k] + '</option>';
+}
+$('#selectGod').html(godsOptions).change(function () {
+  $('#findGod').val($(this).val());
+  $('#findGod').trigger('change');
+});
+$('#findGod').change(function () {
+  selectedGod = $(this).val();
+  vectorPoints.getSource().refresh();
+}).val('');
