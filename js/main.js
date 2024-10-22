@@ -38,13 +38,12 @@ function pointStyle(f) {
       color = '#ff0000';
       break;
   }
-  if (f == currentFeature) {
-    color = '#3c0';
+  if (false !== currentFeature && currentFeature.get('uuid') == p.uuid) {
     stroke = new ol.style.Stroke({
       color: '#000',
       width: 5
     });
-    radius = 15;
+    radius = 25;
   } else {
     stroke = new ol.style.Stroke({
       color: '#000',
