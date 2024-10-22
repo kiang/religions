@@ -75,11 +75,42 @@ var pointFormat = new ol.format.GeoJSON({
   featureProjection: appView.getProjection()
 });
 
-var vectorPoints = new ol.layer.Vector({
+// Add this near the top of the file, with other imports or global variables
+var clusterSource = new ol.source.Cluster({
+  distance: 40,
   source: new ol.source.Vector({
     format: pointFormat
-  }),
-  style: pointStyle
+  })
+});
+
+// Replace the existing vectorPoints definition with this
+var vectorPoints = new ol.layer.Vector({
+  source: clusterSource,
+  style: function(feature) {
+    var size = feature.get('features').length;
+    if (size > 1) {
+      return new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: 10 + Math.min(size, 20),
+          fill: new ol.style.Fill({
+            color: 'rgba(255, 153, 0, 0.8)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: '#fff',
+            width: 2
+          })
+        }),
+        text: new ol.style.Text({
+          text: size.toString(),
+          fill: new ol.style.Fill({
+            color: '#fff'
+          })
+        })
+      });
+    } else {
+      return pointStyle(feature.get('features')[0]);
+    }
+  }
 });
 
 var baseLayer = new ol.layer.Tile({
@@ -156,12 +187,38 @@ map.on('singleclick', function (evt) {
   pointClicked = false;
   map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
     if (false === pointClicked) {
-      pointClicked = true;
-      var p = feature.getProperties();
-      if (p.COUNTYNAME) {
-        routie('county/' + p.COUNTYNAME);
-      } else if (p.uuid) {
-        routie('point/' + p['行政區'] + '/' + p.uuid);
+      if (feature.get('features')) {
+        // This is a cluster or a point from vectorPoints layer
+        var features = feature.get('features');
+        if (features.length === 1) {
+          pointClicked = true;
+          var p = features[0].getProperties();
+          if (p.uuid) {
+            routie('point/' + p['行政區'] + '/' + p.uuid);
+          }
+        } else if (features.length > 1) {
+          // Zoom in when clicking on a cluster
+          var extent = ol.extent.createEmpty();
+          features.forEach(function(f) {
+            ol.extent.extend(extent, f.getGeometry().getExtent());
+          });
+          
+          var currentZoom = map.getView().getZoom();
+          var newZoom = currentZoom + Math.log2(features.length);
+          newZoom = Math.min(newZoom, 20); // Limit max zoom level
+          
+          map.getView().fit(extent, {
+            duration: 1000,
+            padding: [50, 50, 50, 50],
+            maxZoom: newZoom
+          });
+          
+          pointClicked = true;
+        }
+      } else if (feature.get('COUNTYNAME')) {
+        // This is a county feature
+        pointClicked = true;
+        routie('county/' + feature.get('COUNTYNAME'));
       }
     }
   });
@@ -239,52 +296,51 @@ $('#selectGod').html(godsOptions).change(function () {
 });
 $('#findGod').change(function () {
   selectedGod = $(this).val();
-  vectorPoints.getSource().refresh();
+  clusterSource.refresh();
 }).val('');
 
 // Modified routie functions
 routie({
   'county/:countyName': function (countyName) {
     selectedCounty = countyName;
-    vectorPoints.getSource().clear();
+    clusterSource.getSource().clear();
     if (!pointsPool[selectedCounty]) {
       $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
         pointsPool[selectedCounty] = c;
-        vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+        clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
       });
     } else {
-      vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
     }
-    vectorPoints.getSource().refresh();
     county.getSource().refresh();
   },
 
   'point/:county/:uuid': function (countyName, uuid) {
     if (!pointsPool[countyName]) {
-      vectorPoints.getSource().clear();
+      clusterSource.getSource().clear();
       selectedCounty = countyName;
       county.getSource().refresh();
       $.getJSON('https://kiang.github.io/religion/data/poi/' + countyName + '.json', function (c) {
         pointsPool[countyName] = c;
+        clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[countyName]));
         displayPointInfo(countyName, uuid);
-        vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
       });
-    } else if(selectedCounty == countyName) {
-      displayPointInfo(countyName, uuid);
-    } else {
-      vectorPoints.getSource().clear();
+    } else if(selectedCounty != countyName) {
+      clusterSource.getSource().clear();
       selectedCounty = countyName;
       county.getSource().refresh();
-      vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[countyName]));
+      displayPointInfo(countyName, uuid);
+    } else {
       displayPointInfo(countyName, uuid);
     }
   }
 });
 
-function displayPointInfo(countyName, uuid) {
-  var features = pointFormat.readFeatures(pointsPool[countyName]);
+function displayPointInfo(county, uuid) {
+  var features = pointFormat.readFeatures(pointsPool[county]);
   var feature = features.find(f => f.get('uuid') === uuid);
-
+  
   if (feature) {
     currentFeature = feature;
     
@@ -310,7 +366,10 @@ function displayPointInfo(countyName, uuid) {
 
     // Center the map on the selected point
     appView.setCenter(feature.getGeometry().getCoordinates());
-    appView.setZoom(14);
-    vectorPoints.getSource().refresh();
+    if(appView.getZoom() < 14) {
+      appView.setZoom(14);
+    }
+    clusterSource.refresh();
   }
 }
+
