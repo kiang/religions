@@ -293,7 +293,7 @@ function displayPointInfo(countyName, uuid) {
     var message = '<table class="table table-dark">';
     message += '<tbody>';
     for (k in p) {
-      if (k !== 'geometry') {
+      if (k != 'geometry' && k != 'uuid' && k != 'WGS84X' && k != 'WGS84Y') {
         message += '<tr><th scope="row" style="width: 100px;">' + k + '</th><td>' + p[k] + '</td></tr>';
       }
     }
