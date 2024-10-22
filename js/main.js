@@ -19,10 +19,10 @@ var selectedGod = '';
 var emptyStyle = new ol.style.Style();
 function pointStyle(f) {
   var p = f.getProperties(), color = '', stroke, radius;
-  if (selectedGod !== '' && (!p.主祀神祇 || p.主祀神祇 !== selectedGod)) {
+  if (selectedGod !== '' && (!p['主祀神祇'] || p['主祀神祇'] !== selectedGod)) {
     return emptyStyle;
   }
-  switch (p.類型) {
+  switch (p['類型']) {
     case '寺廟':
     case '宗祠基金會':
     case '宗祠':
@@ -38,7 +38,7 @@ function pointStyle(f) {
       color = '#ff0000';
       break;
   }
-  if (f === currentFeature) {
+  if (f == currentFeature) {
     color = '#3c0';
     stroke = new ol.style.Stroke({
       color: '#000',
@@ -160,40 +160,9 @@ map.on('singleclick', function (evt) {
       pointClicked = true;
       var p = feature.getProperties();
       if (p.COUNTYNAME) {
-        selectedCounty = p.COUNTYNAME;
-        vectorPoints.getSource().clear();
-        if (!pointsPool[selectedCounty]) {
-          $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
-            pointsPool[selectedCounty] = c;
-            vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
-            vectorPoints.getSource().refresh();
-          });
-        } else {
-          vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
-          vectorPoints.getSource().refresh();
-        }
-        county.getSource().refresh();
-      } else {
-        currentFeature = feature;
-        vectorPoints.getSource().refresh();
-        var lonLat = ol.proj.toLonLat(p.geometry.getCoordinates());
-        var message = '<table class="table table-dark">';
-        message += '<tbody>';
-        for (k in p) {
-          if (k !== 'geometry') {
-            message += '<tr><th scope="row" style="width: 100px;">' + k + '</th><td>' + p[k] + '</td></tr>';
-          }
-        }
-        message += '<tr><td colspan="2">';
-        message += '<hr /><div class="btn-group-vertical" role="group" style="width: 100%;">';
-        message += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lonLat[1] + ',' + lonLat[0] + '&travelmode=driving" target="_blank" class="btn btn-info btn-lg btn-block">Google 導航</a>';
-        message += '<a href="https://wego.here.com/directions/drive/mylocation/' + lonLat[1] + ',' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Here WeGo 導航</a>';
-        message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Bing 導航</a>';
-        message += '</div></td></tr>';
-        message += '</tbody></table>';
-        sidebarTitle.innerHTML = p.名稱;
-        content.innerHTML = message;
-        sidebar.open('home');
+        routie('county/' + p.COUNTYNAME);
+      } else if (p.uuid) {
+        routie('point/' + p['行政區'] + '/' + p.uuid);
       }
     }
   });
@@ -273,3 +242,76 @@ $('#findGod').change(function () {
   selectedGod = $(this).val();
   vectorPoints.getSource().refresh();
 }).val('');
+
+// Modified routie functions
+routie({
+  'county/:countyName': function (countyName) {
+    selectedCounty = countyName;
+    vectorPoints.getSource().clear();
+    if (!pointsPool[selectedCounty]) {
+      $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
+        pointsPool[selectedCounty] = c;
+        vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      });
+    } else {
+      vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+    }
+    vectorPoints.getSource().refresh();
+    county.getSource().refresh();
+  },
+
+  'point/:county/:uuid': function (countyName, uuid) {
+    if (!pointsPool[countyName]) {
+      vectorPoints.getSource().clear();
+      selectedCounty = countyName;
+      county.getSource().refresh();
+      $.getJSON('https://kiang.github.io/religion/data/poi/' + countyName + '.json', function (c) {
+        pointsPool[countyName] = c;
+        displayPointInfo(countyName, uuid);
+        vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      });
+    } else if(selectedCounty == countyName) {
+      displayPointInfo(countyName, uuid);
+    } else {
+      vectorPoints.getSource().clear();
+      selectedCounty = countyName;
+      county.getSource().refresh();
+      vectorPoints.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      displayPointInfo(countyName, uuid);
+    }
+  }
+});
+
+function displayPointInfo(countyName, uuid) {
+  var features = pointFormat.readFeatures(pointsPool[countyName]);
+  var feature = features.find(f => f.get('uuid') === uuid);
+
+  if (feature) {
+    currentFeature = feature;
+    
+    var p = feature.getProperties();
+    var lonLat = ol.proj.toLonLat(p.geometry.getCoordinates());
+    var message = '<table class="table table-dark">';
+    message += '<tbody>';
+    for (k in p) {
+      if (k !== 'geometry') {
+        message += '<tr><th scope="row" style="width: 100px;">' + k + '</th><td>' + p[k] + '</td></tr>';
+      }
+    }
+    message += '<tr><td colspan="2">';
+    message += '<hr /><div class="btn-group-vertical" role="group" style="width: 100%;">';
+    message += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lonLat[1] + ',' + lonLat[0] + '&travelmode=driving" target="_blank" class="btn btn-info btn-lg btn-block">Google 導航</a>';
+    message += '<a href="https://wego.here.com/directions/drive/mylocation/' + lonLat[1] + ',' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Here WeGo 導航</a>';
+    message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Bing 導航</a>';
+    message += '</div></td></tr>';
+    message += '</tbody></table>';
+    sidebarTitle.innerHTML = p['名稱'];
+    content.innerHTML = message;
+    sidebar.open('home');
+
+    // Center the map on the selected point
+    appView.setCenter(feature.getGeometry().getCoordinates());
+    appView.setZoom(14);
+    vectorPoints.getSource().refresh();
+  }
+}
