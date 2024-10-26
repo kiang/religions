@@ -18,7 +18,7 @@ var filterExtent = false;
 var selectedGod = '';
 var emptyStyle = new ol.style.Style();
 function pointStyle(f, resolution) {
-  var p = f.getProperties(), color = '', stroke, radius;
+  var p = f.getProperties(), color = '', stroke, size;
   if (selectedGod !== '' && (!p['主祀神祇'] || p['主祀神祇'] !== selectedGod)) {
     return emptyStyle;
   }
@@ -41,24 +41,26 @@ function pointStyle(f, resolution) {
   if (false !== currentFeature && currentFeature.get('uuid') == p.uuid) {
     stroke = new ol.style.Stroke({
       color: '#000',
-      width: 5
+      width: 3
     });
-    radius = 25;
+    size = 30;
   } else {
     stroke = new ol.style.Stroke({
-      color: '#000',
-      width: 2
+      color: '#fff',
+      width: 1
     });
-    radius = 10;
+    size = 15;
   }
 
   let pointStyle = new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: radius,
+    image: new ol.style.RegularShape({
+      points: 3,
+      radius: size,
       fill: new ol.style.Fill({
         color: color
       }),
-      stroke: stroke
+      stroke: stroke,
+      rotation: Math.PI / 4 // Rotate 45 degrees to point upwards
     })
   });
 
@@ -70,7 +72,7 @@ function pointStyle(f, resolution) {
       font: '12px Arial',
       fill: new ol.style.Fill({color: '#000'}),
       stroke: new ol.style.Stroke({color: '#fff', width: 2}),
-      offsetY: -15
+      offsetY: -size - 5 // Adjust offset based on the triangle size
     }));
   }
 
