@@ -17,7 +17,7 @@ var filterCity = '', filterTown = '';
 var filterExtent = false;
 var selectedGod = '';
 var emptyStyle = new ol.style.Style();
-function pointStyle(f) {
+function pointStyle(f, resolution) {
   var p = f.getProperties(), color = '', stroke, radius;
   if (selectedGod !== '' && (!p['主祀神祇'] || p['主祀神祇'] !== selectedGod)) {
     return emptyStyle;
@@ -61,6 +61,19 @@ function pointStyle(f) {
       stroke: stroke
     })
   });
+
+  // Add label if zoom level > 14 and 主祀神祇 is available
+  var zoom = map.getView().getZoomForResolution(resolution);
+  if (zoom > 14 && p['主祀神祇']) {
+    pointStyle.setText(new ol.style.Text({
+      text: p['主祀神祇'],
+      font: '12px Arial',
+      fill: new ol.style.Fill({color: '#000'}),
+      stroke: new ol.style.Stroke({color: '#fff', width: 2}),
+      offsetY: -15
+    }));
+  }
+
   return pointStyle;
 }
 var sidebarTitle = document.getElementById('sidebarTitle');
@@ -86,7 +99,7 @@ var clusterSource = new ol.source.Cluster({
 // Replace the existing vectorPoints definition with this
 var vectorPoints = new ol.layer.Vector({
   source: clusterSource,
-  style: function(feature) {
+  style: function(feature, resolution) {
     var size = feature.get('features').length;
     if (size > 1) {
       return new ol.style.Style({
@@ -108,7 +121,7 @@ var vectorPoints = new ol.layer.Vector({
         })
       });
     } else {
-      return pointStyle(feature.get('features')[0]);
+      return pointStyle(feature.get('features')[0], resolution);
     }
   }
 });
