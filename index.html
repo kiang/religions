@@ -175,6 +175,20 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(registration) {
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    
+                    // Check for updates
+                    registration.update();
+                    
+                    // Notify user of update
+                    registration.onupdatefound = function() {
+                        var installingWorker = registration.installing;
+                        installingWorker.onstatechange = function() {
+                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('New content is available; please refresh.');
+                                // You can show a notification to the user here
+                            }
+                        };
+                    };
                 }, function(err) {
                     console.log('ServiceWorker registration failed: ', err);
                 });
