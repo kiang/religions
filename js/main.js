@@ -312,30 +312,61 @@ $('#findGod').change(function () {
   clusterSource.refresh();
 }).val('');
 
-// Modified routie functions
+// Add this near the top of the file, after other variable declarations
+var searchData = [];
+
+// Wrap the autocomplete initialization in a jQuery ready function
+$(document).ready(function() {
+  $('#searchPoint').autocomplete({
+    source: function(request, response) {
+      var results = $.ui.autocomplete.filter(searchData, request.term);
+      response(results.slice(0, 10)); // Limit to 10 results
+    },
+    minLength: 1,
+    select: function(event, ui) {
+      var features = clusterSource.getSource().getFeatures();
+      var feature = features.find(f => f.get('uuid') === ui.item.id);
+      if (feature) {
+        var county = feature.get('行政區');
+        var uuid = feature.get('uuid');
+        routie('point/' + county + '/' + uuid);
+      }
+    }
+  });
+});
+
+// Modify the 'county/:countyName' route to populate searchData
 routie({
   'county/:countyName': function (countyName) {
     selectedCounty = countyName;
     clusterSource.getSource().clear();
+    searchData = []; // Clear previous search data
     if (!pointsPool[selectedCounty]) {
       $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
         pointsPool[selectedCounty] = c;
-        clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+        var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+        clusterSource.getSource().addFeatures(features);
+        populateSearchData(features);
       });
     } else {
-      clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[selectedCounty]));
+      var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+      clusterSource.getSource().addFeatures(features);
+      populateSearchData(features);
     }
     county.getSource().refresh();
   },
 
   'point/:county/:uuid': function (countyName, uuid) {
     if (!pointsPool[countyName]) {
+      searchData = []; // Clear previous search data
       clusterSource.getSource().clear();
       selectedCounty = countyName;
       county.getSource().refresh();
       $.getJSON('https://kiang.github.io/religion/data/poi/' + countyName + '.json', function (c) {
         pointsPool[countyName] = c;
-        clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[countyName]));
+        var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+        clusterSource.getSource().addFeatures(features);
+        populateSearchData(features);
         displayPointInfo(countyName, uuid);
       });
     } else if(selectedCounty != countyName) {
@@ -350,11 +381,25 @@ routie({
   }
 });
 
+// Add this function to populate searchData
+function populateSearchData(features) {
+  features.forEach(function(feature) {
+    var props = feature.getProperties();
+    searchData.push({
+      label: props['名稱'] + ' (' + props['地址'] + ') ' + props['電話'],
+      value: props['名稱'],
+      id: props['uuid']
+    });
+  });
+}
+
+// Modify the displayPointInfo function to set feature ID
 function displayPointInfo(county, uuid) {
   var features = pointFormat.readFeatures(pointsPool[county]);
   var feature = features.find(f => f.get('uuid') === uuid);
   
   if (feature) {
+    feature.setId(uuid); // Set feature ID for later retrieval
     currentFeature = feature;
     
     var p = feature.getProperties();
