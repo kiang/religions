@@ -1,17 +1,17 @@
 const CACHE_NAME = 'religion-map-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/css/ol.css',
-  '/css/ol3-sidebar.min.css',
-  '/js/routie.min.js',
-  '/js/jquery.min.js',
-  '/js/ol.js',
-  '/js/ol5-sidebar.min.js',
-  '/js/main.js',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+  'https://kiang.github.io/religions/',
+  'https://kiang.github.io/religions/index.html',
+  'https://kiang.github.io/religions/css/ol.css',
+  'https://kiang.github.io/religions/css/ol3-sidebar.min.css',
+  'https://kiang.github.io/religions/js/routie.min.js',
+  'https://kiang.github.io/religions/js/jquery.min.js',
+  'https://kiang.github.io/religions/js/ol.js',
+  'https://kiang.github.io/religions/js/ol5-sidebar.min.js',
+  'https://kiang.github.io/religions/js/main.js',
+  'https://kiang.github.io/religions/manifest.json',
+  'https://kiang.github.io/religions/icon-192x192.png',
+  'https://kiang.github.io/religions/icon-512x512.png'
 ];
 
 self.addEventListener('install', function(event) {
