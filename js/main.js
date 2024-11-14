@@ -333,6 +333,76 @@ var searchData = [];
 // Add near the top with other variable declarations
 var photoMapping = {};
 
+// Move routie configuration into the success callback of loadPhotoMapping
+function loadPhotoMapping() {
+  $.ajax({
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQynD1_1VqiLn9SRr92GpBV7HlaytrMFsTJ3_mtNjnKbverlK7c5ihEozH9Mmq_uazqJn_CaQvOrsc1/pub?gid=1471095825&single=true&output=csv',
+    success: function(csvData) {
+      const rows = csvData.split('\n');
+      rows.shift(); // Remove header row
+      rows.forEach(row => {
+        const [timestamp, driveUrl, uuid] = row.split(',');
+        if (uuid && driveUrl) {
+          const idMatch = driveUrl.match(/[-\w]{25,}/);
+          const driveId = idMatch ? idMatch[0] : null;
+          if (driveId) {
+            photoMapping[uuid.trim()] = driveId;
+          }
+        }
+      });
+
+      // Initialize routie after photoMapping is loaded
+      routie({
+        'county/:countyName': function (countyName) {
+          selectedCounty = countyName;
+          clusterSource.getSource().clear();
+          searchData = []; // Clear previous search data
+          if (!pointsPool[selectedCounty]) {
+            $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
+              pointsPool[selectedCounty] = c;
+              var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+              clusterSource.getSource().addFeatures(features);
+              populateSearchData(features);
+            });
+          } else {
+            var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+            clusterSource.getSource().addFeatures(features);
+            populateSearchData(features);
+          }
+          county.getSource().refresh();
+        },
+
+        'point/:county/:uuid': function (countyName, uuid) {
+          if (!pointsPool[countyName]) {
+            searchData = []; // Clear previous search data
+            clusterSource.getSource().clear();
+            selectedCounty = countyName;
+            county.getSource().refresh();
+            $.getJSON('https://kiang.github.io/religion/data/poi/' + countyName + '.json', function (c) {
+              pointsPool[countyName] = c;
+              var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
+              clusterSource.getSource().addFeatures(features);
+              populateSearchData(features);
+              displayPointInfo(countyName, uuid);
+            });
+          } else if(selectedCounty != countyName) {
+            clusterSource.getSource().clear();
+            selectedCounty = countyName;
+            county.getSource().refresh();
+            clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[countyName]));
+            displayPointInfo(countyName, uuid);
+          } else {
+            displayPointInfo(countyName, uuid);
+          }
+        }
+      });
+    }
+  });
+}
+
+// Call loadPhotoMapping immediately
+loadPhotoMapping();
+
 // Wrap the autocomplete initialization in a jQuery ready function
 $(document).ready(function() {
   $('#searchPoint').autocomplete({
@@ -351,76 +421,6 @@ $(document).ready(function() {
       }
     }
   });
-  loadPhotoMapping();
-});
-
-
-// Add after the document ready function
-function loadPhotoMapping() {
-  $.ajax({
-    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQynD1_1VqiLn9SRr92GpBV7HlaytrMFsTJ3_mtNjnKbverlK7c5ihEozH9Mmq_uazqJn_CaQvOrsc1/pub?gid=1471095825&single=true&output=csv',
-    success: function(csvData) {
-      const rows = csvData.split('\n');
-      rows.shift(); // Remove header row
-      rows.forEach(row => {
-        const [timestamp, driveUrl, uuid] = row.split(',');
-        if (uuid && driveUrl) {
-          // Extract drive ID from URL
-          const idMatch = driveUrl.match(/[-\w]{25,}/);
-          const driveId = idMatch ? idMatch[0] : null;
-          if (driveId) {
-            photoMapping[uuid.trim()] = driveId;
-          }
-        }
-      });
-    }
-  });
-}
-
-// Modify the 'county/:countyName' route to populate searchData
-routie({
-  'county/:countyName': function (countyName) {
-    selectedCounty = countyName;
-    clusterSource.getSource().clear();
-    searchData = []; // Clear previous search data
-    if (!pointsPool[selectedCounty]) {
-      $.getJSON('https://kiang.github.io/religion/data/poi/' + selectedCounty + '.json', function (c) {
-        pointsPool[selectedCounty] = c;
-        var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
-        clusterSource.getSource().addFeatures(features);
-        populateSearchData(features);
-      });
-    } else {
-      var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
-      clusterSource.getSource().addFeatures(features);
-      populateSearchData(features);
-    }
-    county.getSource().refresh();
-  },
-
-  'point/:county/:uuid': function (countyName, uuid) {
-    if (!pointsPool[countyName]) {
-      searchData = []; // Clear previous search data
-      clusterSource.getSource().clear();
-      selectedCounty = countyName;
-      county.getSource().refresh();
-      $.getJSON('https://kiang.github.io/religion/data/poi/' + countyName + '.json', function (c) {
-        pointsPool[countyName] = c;
-        var features = pointFormat.readFeatures(pointsPool[selectedCounty]);
-        clusterSource.getSource().addFeatures(features);
-        populateSearchData(features);
-        displayPointInfo(countyName, uuid);
-      });
-    } else if(selectedCounty != countyName) {
-      clusterSource.getSource().clear();
-      selectedCounty = countyName;
-      county.getSource().refresh();
-      clusterSource.getSource().addFeatures(pointFormat.readFeatures(pointsPool[countyName]));
-      displayPointInfo(countyName, uuid);
-    } else {
-      displayPointInfo(countyName, uuid);
-    }
-  }
 });
 
 // Add this function to populate searchData
