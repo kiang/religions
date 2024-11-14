@@ -330,6 +330,9 @@ $('#findGod').change(function () {
 // Add this near the top of the file, after other variable declarations
 var searchData = [];
 
+// Add near the top with other variable declarations
+var photoMapping = {};
+
 // Wrap the autocomplete initialization in a jQuery ready function
 $(document).ready(function() {
   $('#searchPoint').autocomplete({
@@ -348,7 +351,31 @@ $(document).ready(function() {
       }
     }
   });
+  loadPhotoMapping();
 });
+
+
+// Add after the document ready function
+function loadPhotoMapping() {
+  $.ajax({
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQynD1_1VqiLn9SRr92GpBV7HlaytrMFsTJ3_mtNjnKbverlK7c5ihEozH9Mmq_uazqJn_CaQvOrsc1/pub?gid=1471095825&single=true&output=csv',
+    success: function(csvData) {
+      const rows = csvData.split('\n');
+      rows.shift(); // Remove header row
+      rows.forEach(row => {
+        const [timestamp, driveUrl, uuid] = row.split(',');
+        if (uuid && driveUrl) {
+          // Extract drive ID from URL
+          const idMatch = driveUrl.match(/[-\w]{25,}/);
+          const driveId = idMatch ? idMatch[0] : null;
+          if (driveId) {
+            photoMapping[uuid.trim()] = driveId;
+          }
+        }
+      });
+    }
+  });
+}
 
 // Modify the 'county/:countyName' route to populate searchData
 routie({
@@ -419,7 +446,15 @@ function displayPointInfo(county, uuid) {
     
     var p = feature.getProperties();
     var lonLat = ol.proj.toLonLat(p.geometry.getCoordinates());
-    var message = '<table class="table table-dark">';
+    var message = '';
+    // Add photo iframe if exists
+    if (photoMapping[uuid]) {
+      message += '<iframe src="https://drive.google.com/file/d/' + photoMapping[uuid] + '/preview" style="width:100%; height:400px; border:none; margin-bottom:10px;"></iframe>';
+    } else {
+      message += '<div class="btn-group-vertical" role="group" style="width: 100%;"><a href="https://docs.google.com/forms/d/e/1FAIpQLSdvPybiyuuiTDSk3cuoU_fECQyEqlqCEawzdp12gHkVpLzSmA/viewform?usp=pp_url&entry.2072773208=' + uuid + '" target="_blank" class="btn btn-warning btn-lg btn-block">提供照片</a></div>';
+    }
+
+    message += '<table class="table table-dark">';
     message += '<tbody>';
     for (k in p) {
       if (k != 'geometry' && k != 'uuid' && k != 'WGS84X' && k != 'WGS84Y') {
@@ -428,6 +463,7 @@ function displayPointInfo(county, uuid) {
     }
     message += '<tr><td colspan="2">';
     message += '<hr /><div class="btn-group-vertical" role="group" style="width: 100%;">';
+    
     message += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lonLat[1] + ',' + lonLat[0] + '&travelmode=driving" target="_blank" class="btn btn-info btn-lg btn-block">Google 導航</a>';
     message += '<a href="https://wego.here.com/directions/drive/mylocation/' + lonLat[1] + ',' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Here WeGo 導航</a>';
     message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Bing 導航</a>';
