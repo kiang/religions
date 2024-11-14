@@ -233,7 +233,12 @@ map.on('singleclick', function (evt) {
           pointClicked = true;
           var p = features[0].getProperties();
           if (p.uuid) {
-            routie('point/' + p['行政區'] + '/' + p.uuid);
+            // Force route refresh by adding and removing a timestamp
+            var timestamp = Date.now();
+            routie('refresh/' + timestamp);
+            setTimeout(function() {
+              routie('point/' + p['行政區'] + '/' + p.uuid);
+            }, 1);
           }
         } else if (features.length > 1) {
           // Clear sidebar content and close it when clicking on a cluster
@@ -271,6 +276,11 @@ map.on('singleclick', function (evt) {
     content.innerHTML = '';
     sidebar.close();
   }
+});
+
+// Add a dummy route for refresh
+routie('refresh/:timestamp', function(timestamp) {
+  // Do nothing, this is just for forcing route refresh
 });
 
 var previousFeature = false;
