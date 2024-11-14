@@ -336,7 +336,7 @@ var photoMapping = {};
 // Move routie configuration into the success callback of loadPhotoMapping
 function loadPhotoMapping() {
   $.ajax({
-    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQynD1_1VqiLn9SRr92GpBV7HlaytrMFsTJ3_mtNjnKbverlK7c5ihEozH9Mmq_uazqJn_CaQvOrsc1/pub?gid=1471095825&single=true&output=csv',
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgdBZV-REAiv3B356dc_IMZcA1ZNoqpXFFvRjzRe0HcNW5dcBc53zyejsWLxpf10Ulp65LuCJUBPnD/pub?gid=681007359&single=true&output=csv',
     success: function(csvData) {
       const rows = csvData.split('\n');
       rows.shift(); // Remove header row
