@@ -22,22 +22,27 @@ function pointStyle(f, resolution) {
   if (selectedGod !== '' && (!p['主祀神祇'] || p['主祀神祇'] !== selectedGod)) {
     return emptyStyle;
   }
+
+  // Check if this point has a photo in photoMapping
+  var hasPhoto = photoMapping[p.uuid] ? true : false;
+  
   switch (p['類型']) {
     case '寺廟':
     case '宗祠基金會':
     case '宗祠':
-      color = '#ceaf30';
+      color = hasPhoto ? '#32CD32' : '#ceaf30'; // Light green if has photo, original color if not
       break;
     case '教會':
-      color = '#fff';
+      color = hasPhoto ? '#90EE90' : '#fff'; // Pale green if has photo, original color if not
       break;
     case '基金會':
-      color = '#00a6b5';
+      color = hasPhoto ? '#98FB98' : '#00a6b5'; // Mint green if has photo, original color if not
       break;
     default:
-      color = '#ff0000';
+      color = hasPhoto ? '#3CB371' : '#ff0000'; // Medium sea green if has photo, original color if not
       break;
   }
+
   if (false !== currentFeature && currentFeature.get('uuid') == p.uuid) {
     stroke = new ol.style.Stroke({
       color: '#000',
@@ -46,7 +51,7 @@ function pointStyle(f, resolution) {
     size = 30;
   } else {
     stroke = new ol.style.Stroke({
-      color: '#fff',
+      color: '#000',
       width: 1
     });
     size = 15;
@@ -112,6 +117,12 @@ function vectorPointsStyle(feature, resolution) {
       }
       size = matchingFeatures.length; // Update size to show only matching features
     }
+
+    // Count features without photos
+    var countWithoutPhoto = feature.get('features').filter(function(f) {
+      return !photoMapping[f.get('uuid')];
+    }).length;
+
     return new ol.style.Style({
       image: new ol.style.Circle({
         radius: 10 + Math.min(size, 20),
@@ -124,7 +135,7 @@ function vectorPointsStyle(feature, resolution) {
         })
       }),
       text: new ol.style.Text({
-        text: size.toString(),
+        text: countWithoutPhoto + '/' + size,
         fill: new ol.style.Fill({
           color: '#fff'
         })
