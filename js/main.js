@@ -236,6 +236,11 @@ map.on('singleclick', function (evt) {
             routie('point/' + p['行政區'] + '/' + p.uuid);
           }
         } else if (features.length > 1) {
+          // Clear sidebar content and close it when clicking on a cluster
+          sidebarTitle.innerHTML = '';
+          content.innerHTML = '';
+          sidebar.close();
+          
           // Zoom in when clicking on a cluster
           var extent = ol.extent.createEmpty();
           features.forEach(function(f) {
@@ -261,6 +266,11 @@ map.on('singleclick', function (evt) {
       }
     }
   });
+  if(false === pointClicked) {
+    sidebarTitle.innerHTML = '';
+    content.innerHTML = '';
+    sidebar.close();
+  }
 });
 
 var previousFeature = false;
