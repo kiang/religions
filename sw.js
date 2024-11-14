@@ -1,4 +1,4 @@
-const CACHE_NAME = 'religion-map-v1.00001';
+const CACHE_NAME = 'religion-map-v1.00002';
 const urlsToCache = [
   'https://kiang.github.io/religions/',
   'https://kiang.github.io/religions/index.html',
