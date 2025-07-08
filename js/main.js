@@ -17,71 +17,180 @@ var filterCity = '', filterTown = '';
 var filterExtent = false;
 var selectedGod = '';
 var emptyStyle = new ol.style.Style();
+
+// Sacred color constants
+var SACRED_COLORS = {
+  gold: '#D4AF37',
+  deepGold: '#B8860B',
+  lightGold: '#F4E7B1',
+  purple: '#6B46C1',
+  deepPurple: '#553C9A',
+  lightPurple: '#E0E7FF',
+  warmWhite: '#FEFCF8',
+  photoGold: '#FFD700',
+  crimson: '#DC143C',
+  emerald: '#50C878'
+};
+
+function createSacredMarker(type, hasPhoto, isSelected, size) {
+  var fillColor, strokeColor, strokeWidth;
+  var innerRadius = size * 0.6;
+  var outerRadius = size;
+  
+  // Define colors based on religious site type
+  switch (type) {
+    case '寺廟':
+    case '宗祠基金會':
+    case '宗祠':
+      fillColor = hasPhoto ? SACRED_COLORS.photoGold : SACRED_COLORS.gold;
+      strokeColor = SACRED_COLORS.deepGold;
+      break;
+    case '教會':
+      fillColor = hasPhoto ? SACRED_COLORS.lightPurple : SACRED_COLORS.purple;
+      strokeColor = SACRED_COLORS.deepPurple;
+      break;
+    case '基金會':
+      fillColor = hasPhoto ? SACRED_COLORS.emerald : SACRED_COLORS.lightGold;
+      strokeColor = SACRED_COLORS.deepGold;
+      break;
+    default:
+      fillColor = hasPhoto ? SACRED_COLORS.crimson : SACRED_COLORS.gold;
+      strokeColor = SACRED_COLORS.deepGold;
+      break;
+  }
+  
+  strokeWidth = isSelected ? 4 : 2;
+  
+  // Create gradient effect with multiple circles
+  var styles = [];
+  
+  // Outer glow (largest circle)
+  styles.push(new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: outerRadius + (isSelected ? 8 : 3),
+      fill: new ol.style.Fill({
+        color: fillColor + '20' // 20% opacity for glow
+      })
+    })
+  }));
+  
+  // Main marker circle
+  styles.push(new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: outerRadius,
+      fill: new ol.style.Fill({
+        color: fillColor
+      }),
+      stroke: new ol.style.Stroke({
+        color: strokeColor,
+        width: strokeWidth
+      })
+    })
+  }));
+  
+  // Inner highlight circle
+  styles.push(new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: innerRadius,
+      fill: new ol.style.Fill({
+        color: SACRED_COLORS.warmWhite + '40' // 40% opacity for inner glow
+      })
+    })
+  }));
+  
+  // Central sacred symbol based on type
+  var symbolColor = strokeColor;
+  var symbolSize = innerRadius * 0.6;
+  
+  if (type === '寺廟' || type === '宗祠基金會' || type === '宗祠') {
+    // Create a small golden dot for temples
+    styles.push(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: symbolSize,
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.deepGold
+        })
+      })
+    }));
+  } else if (type === '教會') {
+    // Create a cross-like symbol for churches
+    styles.push(new ol.style.Style({
+      image: new ol.style.RegularShape({
+        points: 4,
+        radius: symbolSize,
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.warmWhite
+        }),
+        stroke: new ol.style.Stroke({
+          color: symbolColor,
+          width: 1
+        })
+      })
+    }));
+  } else {
+    // Default sacred symbol
+    styles.push(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: symbolSize,
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.warmWhite
+        }),
+        stroke: new ol.style.Stroke({
+          color: symbolColor,
+          width: 1
+        })
+      })
+    }));
+  }
+  
+  // Photo indicator (golden ring)
+  if (hasPhoto) {
+    styles.push(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: outerRadius + 2,
+        stroke: new ol.style.Stroke({
+          color: SACRED_COLORS.photoGold,
+          width: 3
+        })
+      })
+    }));
+  }
+  
+  return styles;
+}
+
 function pointStyle(f, resolution) {
-  var p = f.getProperties(), color = '', stroke, size;
+  var p = f.getProperties();
   if (selectedGod !== '' && (!p['主祀神祇'] || p['主祀神祇'] !== selectedGod)) {
     return emptyStyle;
   }
 
   // Check if this point has a photo in photoMapping
   var hasPhoto = photoMapping[p.uuid] ? true : false;
+  var isSelected = false !== currentFeature && currentFeature.get('uuid') == p.uuid;
+  var size = isSelected ? 18 : 12;
   
-  switch (p['類型']) {
-    case '寺廟':
-    case '宗祠基金會':
-    case '宗祠':
-      color = hasPhoto ? '#32CD32' : '#ceaf30'; // Light green if has photo, original color if not
-      break;
-    case '教會':
-      color = hasPhoto ? '#90EE90' : '#fff'; // Pale green if has photo, original color if not
-      break;
-    case '基金會':
-      color = hasPhoto ? '#98FB98' : '#00a6b5'; // Mint green if has photo, original color if not
-      break;
-    default:
-      color = hasPhoto ? '#3CB371' : '#ff0000'; // Medium sea green if has photo, original color if not
-      break;
-  }
-
-  if (false !== currentFeature && currentFeature.get('uuid') == p.uuid) {
-    stroke = new ol.style.Stroke({
-      color: '#000',
-      width: 3
-    });
-    size = 30;
-  } else {
-    stroke = new ol.style.Stroke({
-      color: '#000',
-      width: 1
-    });
-    size = 15;
-  }
-
-  let pointStyle = new ol.style.Style({
-    image: new ol.style.RegularShape({
-      points: 3,
-      radius: size,
-      fill: new ol.style.Fill({
-        color: color
-      }),
-      stroke: stroke,
-      rotation: Math.PI / 4 // Rotate 45 degrees to point upwards
-    })
-  });
-
+  // Get the sacred marker styles
+  var styles = createSacredMarker(p['類型'], hasPhoto, isSelected, size);
+  
   // Add label if zoom level > 14 and 主祀神祇 is available
   var zoom = map.getView().getZoomForResolution(resolution);
   if (zoom > 14 && p['主祀神祇']) {
-    pointStyle.setText(new ol.style.Text({
-      text: p['主祀神祇'],
-      font: '12px Arial',
-      fill: new ol.style.Fill({color: '#000'}),
-      stroke: new ol.style.Stroke({color: '#fff', width: 2}),
-      offsetY: -size - 5 // Adjust offset based on the triangle size
-    }));
+    var labelStyle = new ol.style.Style({
+      text: new ol.style.Text({
+        text: p['主祀神祇'],
+        font: 'bold 13px "Noto Sans TC", sans-serif',
+        fill: new ol.style.Fill({color: SACRED_COLORS.deepGold}),
+        stroke: new ol.style.Stroke({color: SACRED_COLORS.warmWhite, width: 3}),
+        offsetY: -(size + 15),
+        textAlign: 'center',
+        textBaseline: 'bottom'
+      })
+    });
+    styles.push(labelStyle);
   }
 
-  return pointStyle;
+  return styles;
 }
 var pointPopup = new bootstrap.Modal(document.getElementById('point-popup'));
 var settingsPopup = new bootstrap.Modal(document.getElementById('settings-popup'));
@@ -125,25 +234,62 @@ function vectorPointsStyle(feature, resolution) {
     var countWithoutPhoto = feature.get('features').filter(function(f) {
       return !photoMapping[f.get('uuid')];
     }).length;
-
-    return new ol.style.Style({
+    
+    var clusterRadius = Math.min(15 + (size * 2), 35);
+    var styles = [];
+    
+    // Outer glow for cluster
+    styles.push(new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 10 + Math.min(size, 20),
+        radius: clusterRadius + 6,
         fill: new ol.style.Fill({
-          color: 'rgba(255, 153, 0, 0.8)'
-        }),
-        stroke: new ol.style.Stroke({
-          color: '#fff',
-          width: 2
-        })
-      }),
-      text: new ol.style.Text({
-        text: countWithoutPhoto + '/' + size,
-        fill: new ol.style.Fill({
-          color: '#fff'
+          color: SACRED_COLORS.gold + '30' // 30% opacity glow
         })
       })
-    });
+    }));
+    
+    // Main cluster circle with sacred gradient effect
+    styles.push(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: clusterRadius,
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.gold
+        }),
+        stroke: new ol.style.Stroke({
+          color: SACRED_COLORS.deepGold,
+          width: 3
+        })
+      })
+    }));
+    
+    // Inner highlight
+    styles.push(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: clusterRadius * 0.7,
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.warmWhite + '50' // 50% opacity inner glow
+        })
+      })
+    }));
+    
+    // Text style for cluster count
+    styles.push(new ol.style.Style({
+      text: new ol.style.Text({
+        text: countWithoutPhoto + '/' + size,
+        font: 'bold 12px "Noto Sans TC", sans-serif',
+        fill: new ol.style.Fill({
+          color: SACRED_COLORS.deepGold
+        }),
+        stroke: new ol.style.Stroke({
+          color: SACRED_COLORS.warmWhite,
+          width: 2
+        }),
+        textAlign: 'center',
+        textBaseline: 'middle'
+      })
+    }));
+
+    return styles;
   } else {
     return pointStyle(feature.get('features')[0], resolution);
   }
@@ -224,6 +370,22 @@ var map = new ol.Map({
 var pointClicked = false;
 var selectedCounty = '';
 var pointsPool = {};
+// Add hover effects for markers
+map.on('pointermove', function(evt) {
+  var hit = map.hasFeatureAtPixel(evt.pixel);
+  map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+  
+  // Change marker appearance on hover
+  if (hit) {
+    map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+      if (feature.get('features')) {
+        // This is a point feature, add hover effect
+        vectorPoints.getSource().changed();
+      }
+    });
+  }
+});
+
 map.on('singleclick', function (evt) {
   content.innerHTML = '';
   pointClicked = false;
@@ -529,22 +691,51 @@ function displayPointInfo(county, uuid) {
     if (photoMapping[uuid]) {
       message += '<iframe src="https://drive.google.com/file/d/' + photoMapping[uuid] + '/preview" style="width:100%; height:400px; border:none; margin-bottom:10px;"></iframe>';
     } else {
-      message += '<div class="btn-group-vertical" role="group" style="width: 100%;"><a href="https://docs.google.com/forms/d/e/1FAIpQLSdvPybiyuuiTDSk3cuoU_fECQyEqlqCEawzdp12gHkVpLzSmA/viewform?usp=pp_url&entry.2072773208=' + uuid + '" target="_blank" class="btn btn-warning btn-lg btn-block">提供照片</a></div>';
+      message += '<div class="text-center mb-3 p-3" style="background: var(--gradient-light); border-radius: 12px; border: 1px solid var(--primary-gold);">';
+      message += '<p style="margin-bottom: 12px; color: var(--text-dark); font-weight: 500;"><i class="fa fa-camera" style="margin-right: 8px; color: var(--primary-gold);"></i>幫助我們記錄這個神聖的地方</p>';
+      message += '<a href="https://docs.google.com/forms/d/e/1FAIpQLSdvPybiyuuiTDSk3cuoU_fECQyEqlqCEawzdp12gHkVpLzSmA/viewform?usp=pp_url&entry.2072773208=' + uuid + '" target="_blank" class="btn btn-primary"><i class="fa fa-camera" style="margin-right: 8px;"></i>提供照片</a>';
+      message += '</div>';
     }
 
-    message += '<table class="table table-dark">';
+    message += '<table class="table table-sacred">';
     message += '<tbody>';
-    for (k in p) {
-      if (k != 'geometry' && k != 'uuid' && k != 'WGS84X' && k != 'WGS84Y') {
-        message += '<tr><th scope="row" style="width: 100px;">' + k + '</th><td>' + p[k] + '</td></tr>';
+    
+    // Priority order for religious information
+    var priorityFields = ['名稱', '類型', '主祀神祇', '地址', '電話', '負責人', '登記日期'];
+    var displayedFields = new Set();
+    
+    // Display priority fields first
+    for (var i = 0; i < priorityFields.length; i++) {
+      var field = priorityFields[i];
+      if (p[field] && p[field] !== '') {
+        var icon = '';
+        switch(field) {
+          case '名稱': icon = '<i class="fa fa-home" style="margin-right: 8px; color: var(--primary-gold);"></i>'; break;
+          case '類型': icon = '<i class="fa fa-tag" style="margin-right: 8px; color: var(--sacred-purple);"></i>'; break;
+          case '主祀神祇': icon = '<i class="fa fa-star" style="margin-right: 8px; color: var(--primary-gold);"></i>'; break;
+          case '地址': icon = '<i class="fa fa-map-marker" style="margin-right: 8px; color: var(--sacred-purple);"></i>'; break;
+          case '電話': icon = '<i class="fa fa-phone" style="margin-right: 8px; color: var(--primary-gold);"></i>'; break;
+          case '負責人': icon = '<i class="fa fa-user" style="margin-right: 8px; color: var(--sacred-purple);"></i>'; break;
+          case '登記日期': icon = '<i class="fa fa-calendar" style="margin-right: 8px; color: var(--primary-gold);"></i>'; break;
+        }
+        message += '<tr><th scope="row" style="width: 120px; font-weight: 500;">' + icon + field + '</th><td style="font-weight: 400;">' + p[field] + '</td></tr>';
+        displayedFields.add(field);
       }
     }
-    message += '<tr><td colspan="2">';
-    message += '<hr /><div class="btn-group-vertical" role="group" style="width: 100%;">';
     
-    message += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lonLat[1] + ',' + lonLat[0] + '&travelmode=driving" target="_blank" class="btn btn-info btn-lg btn-block">Google 導航</a>';
-    message += '<a href="https://wego.here.com/directions/drive/mylocation/' + lonLat[1] + ',' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Here WeGo 導航</a>';
-    message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Bing 導航</a>';
+    // Display remaining fields
+    for (k in p) {
+      if (k != 'geometry' && k != 'uuid' && k != 'WGS84X' && k != 'WGS84Y' && !displayedFields.has(k) && p[k] !== '') {
+        message += '<tr><th scope="row" style="width: 120px; font-weight: 500;"><i class="fa fa-info-circle" style="margin-right: 8px; color: var(--text-light);"></i>' + k + '</th><td style="font-weight: 400;">' + p[k] + '</td></tr>';
+      }
+    }
+    
+    message += '<tr><td colspan="2" style="border-top: 2px solid var(--primary-gold); padding-top: 20px;">';
+    message += '<div class="btn-group-vertical" role="group" style="width: 100%; gap: 8px;">';
+    
+    message += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lonLat[1] + ',' + lonLat[0] + '&travelmode=driving" target="_blank" class="btn btn-info"><i class="fa fa-google" style="margin-right: 8px;"></i>Google 導航</a>';
+    message += '<a href="https://wego.here.com/directions/drive/mylocation/' + lonLat[1] + ',' + lonLat[0] + '" target="_blank" class="btn btn-info"><i class="fa fa-location-arrow" style="margin-right: 8px;"></i>Here WeGo 導航</a>';
+    message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info"><i class="fa fa-compass" style="margin-right: 8px;"></i>Bing 導航</a>';
     message += '</div></td></tr>';
     message += '</tbody></table>';
     document.getElementById('pointPopupLabel').innerHTML = p['名稱'];
