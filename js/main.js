@@ -1,4 +1,4 @@
-var sidebar = new ol.control.Sidebar({ element: 'sidebar', position: 'right' });
+// Removed sidebar - using popup modals instead
 var jsonFiles, filesLength, fileKey = 0;
 
 var projection = ol.proj.get('EPSG:3857');
@@ -83,7 +83,10 @@ function pointStyle(f, resolution) {
 
   return pointStyle;
 }
-var sidebarTitle = document.getElementById('sidebarTitle');
+var pointPopup = new bootstrap.Modal(document.getElementById('point-popup'));
+var settingsPopup = new bootstrap.Modal(document.getElementById('settings-popup'));
+var helpPopup = new bootstrap.Modal(document.getElementById('help-popup'));
+var fbPopup = new bootstrap.Modal(document.getElementById('fb-popup'));
 var content = document.getElementById('infoBox');
 
 var appView = new ol.View({
@@ -217,7 +220,7 @@ var map = new ol.Map({
   view: appView
 });
 
-map.addControl(sidebar);
+// Removed sidebar control - using popup modals instead
 var pointClicked = false;
 var selectedCounty = '';
 var pointsPool = {};
@@ -241,10 +244,9 @@ map.on('singleclick', function (evt) {
             }, 1);
           }
         } else if (features.length > 1) {
-          // Clear sidebar content and close it when clicking on a cluster
-          sidebarTitle.innerHTML = '';
+          // Clear popup content and close it when clicking on a cluster
           content.innerHTML = '';
-          sidebar.close();
+          pointPopup.hide();
           
           // Zoom in when clicking on a cluster
           var extent = ol.extent.createEmpty();
@@ -272,9 +274,8 @@ map.on('singleclick', function (evt) {
     }
   });
   if(false === pointClicked) {
-    sidebarTitle.innerHTML = '';
     content.innerHTML = '';
-    sidebar.close();
+    pointPopup.hide();
   }
 });
 
@@ -434,6 +435,52 @@ function loadPhotoMapping() {
 // Call loadPhotoMapping immediately
 loadPhotoMapping();
 
+// Initialize popup interactions
+$(document).ready(function() {
+  // Floating Action Button interactions
+  var fabMenuVisible = false;
+  
+  $('#main-fab').click(function() {
+    var fabMenu = $('#fab-menu');
+    if (fabMenuVisible) {
+      fabMenu.addClass('d-none');
+      $(this).find('i').removeClass('fa-times').addClass('fa-bars');
+    } else {
+      fabMenu.removeClass('d-none');
+      $(this).find('i').removeClass('fa-bars').addClass('fa-times');
+    }
+    fabMenuVisible = !fabMenuVisible;
+  });
+  
+  // Settings popup
+  $('#fab-settings').click(function() {
+    settingsPopup.show();
+    // Close fab menu
+    $('#fab-menu').addClass('d-none');
+    $('#main-fab').find('i').removeClass('fa-times').addClass('fa-bars');
+    fabMenuVisible = false;
+  });
+  
+  // Help popup
+  $('#fab-help').click(function() {
+    helpPopup.show();
+    // Close fab menu
+    $('#fab-menu').addClass('d-none');
+    $('#main-fab').find('i').removeClass('fa-times').addClass('fa-bars');
+    fabMenuVisible = false;
+  });
+  
+  
+  // Close fab menu when clicking outside
+  $(document).click(function(e) {
+    if (!$(e.target).closest('#fab-container').length && fabMenuVisible) {
+      $('#fab-menu').addClass('d-none');
+      $('#main-fab').find('i').removeClass('fa-times').addClass('fa-bars');
+      fabMenuVisible = false;
+    }
+  });
+});
+
 // Wrap the autocomplete initialization in a jQuery ready function
 $(document).ready(function() {
   $('#searchPoint').autocomplete({
@@ -500,9 +547,9 @@ function displayPointInfo(county, uuid) {
     message += '<a href="https://bing.com/maps/default.aspx?rtp=~pos.' + lonLat[1] + '_' + lonLat[0] + '" target="_blank" class="btn btn-info btn-lg btn-block">Bing 導航</a>';
     message += '</div></td></tr>';
     message += '</tbody></table>';
-    sidebarTitle.innerHTML = p['名稱'];
+    document.getElementById('pointPopupLabel').innerHTML = p['名稱'];
     content.innerHTML = message;
-    sidebar.open('home');
+    pointPopup.show();
 
     // Center the map on the selected point
     appView.setCenter(feature.getGeometry().getCoordinates());

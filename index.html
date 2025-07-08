@@ -11,7 +11,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/ol.css" type="text/css">
-    <link rel="stylesheet" href="css/ol3-sidebar.min.css" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-wEmeIV1mKuiNpC+IOBjI7aAzPcEZeedi5yW5f2yOq55WWLwNGmvvx4Um1vskeMj0" crossorigin="anonymous">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -71,65 +70,55 @@
             }(document, 'script', 'facebook-jssdk'));
         }
     </script>
-    <div id="sidebar" class="sidebar collapsed">
-        <!-- Nav tabs -->
-        <div class="sidebar-tabs">
-            <ul role="tablist">
-                <li><a href="#home" role="tab"><i class="fa fa-bars"></i></a></li>
-                <li><a href="#book" role="tab"><i class="fa fa-book"></i></a></li>
-                <li><a href="#settings" role="tab"><i class="fa fa-gear"></i></a></li>
-                <li><a href="https://github.com/kiang/religions" role="tab" target="_blank"><i
-                            class="fa fa-github"></i></a></li>
-                <li><a href="#fb" role="tab"><i class="fa fa-facebook"></i></a></li>
-            </ul>
+    <!-- Floating Action Button -->
+    <div id="fab-container" style="position: fixed; bottom: 80px; right: 20px; z-index: 1000;">
+        <button id="main-fab" class="btn btn-primary rounded-circle" style="width: 60px; height: 60px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <i class="fa fa-bars fa-lg"></i>
+        </button>
+        <div id="fab-menu" class="d-none" style="position: absolute; bottom: 70px; right: 0; display: flex; flex-direction: column; gap: 10px;">
+            <button id="fab-settings" class="btn btn-info rounded-circle" style="width: 50px; height: 50px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                <i class="fa fa-gear"></i>
+            </button>
+            <button id="fab-help" class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                <i class="fa fa-book"></i>
+            </button>
+            <a href="https://github.com/kiang/religions" target="_blank" class="btn btn-dark rounded-circle" style="width: 50px; height: 50px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
+                <i class="fa fa-github"></i>
+            </a>
         </div>
+    </div>
 
-        <!-- Tab panes -->
-        <div class="sidebar-content">
-            <div class="sidebar-pane" id="home">
-                <h1 class="sidebar-header"><span id="sidebarTitle">請點選地圖中的點</span><span class="sidebar-close"><i
-                            class="fa fa-caret-left"></i></span></h1>
-                <div id="sidebarContent">
-                    <div class="accordion" id="accordionMain">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="heading1">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapseInfo" aria-expanded="true" aria-controls="collapseInfo">
-                                    基本資料
-                                </button>
-                            </h2>
-                            <div id="collapseInfo" class="accordion-collapse collapse show" aria-labelledby="heading1"
-                                data-bs-parent="#accordionMain">
-                                <div class="accordion-body" id="infoBox"></div>
-                            </div>
-                        </div>
+    <!-- Point Info Popup -->
+    <div id="point-popup" class="modal fade" tabindex="-1" aria-labelledby="pointPopupLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pointPopupLabel">請點選地圖中的點</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="infoBox"></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="btn-group-vertical w-100" role="group">
+                        <a href="https://github.com/kiang/religions/issues" target="_blank" class="btn btn-primary">網站問題反應</a>
+                        <a href="https://www.facebook.com/k.olc.tw/posts/1927095310797256" target="_blank" class="btn btn-primary">FB 討論</a>
+                        <a href="https://link.medium.com/KefoPYtA3jb" target="_blank" class="btn btn-primary">Medium 討論</a>
                     </div>
                 </div>
-                <div class="btn-group-vertical" role="group" style="width: 100%;">
-                    <a href="https://github.com/kiang/religions/issues" target="_blank"
-                        class="btn btn-primary btn-lg btn-block">網站問題反應</a>
-                    <a href="https://www.facebook.com/k.olc.tw/posts/1927095310797256" target="_blank"
-                        class="btn btn-primary btn-lg btn-block">FB 討論</a>
-                    <a href="https://link.medium.com/KefoPYtA3jb" target="_blank"
-                        class="btn btn-primary btn-lg btn-block">Medium 討論</a>
-                </div>
             </div>
-            <div class="sidebar-pane" id="book">
-                <h1 class="sidebar-header"><span id="weekTitle">說明</span><span class="sidebar-close"><i
-                            class="fa fa-caret-left"></i></span></h1>
-                <div>
-                    注意事項：
-                    <ul>
-                        <li><a href="https://religion.moi.gov.tw/" target="_blank">資料來源</a></li>
-                    </ul>
+        </div>
+    </div>
+
+    <!-- Settings Popup -->
+    <div id="settings-popup" class="modal fade" tabindex="-1" aria-labelledby="settingsPopupLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsPopupLabel">設定</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            </div>
-            <div class="sidebar-pane" id="settings">
-                <h1 class="sidebar-header">
-                    <span id="weekTitle">設定</span>
-                    <span class="sidebar-close"><i class="fa fa-caret-left"></i></span>
-                </h1>
-                <div class="p-3">
+                <div class="modal-body">
                     <div class="mb-4">
                         <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" id="btn-geolocation">
                             <i class="fa fa-location-arrow"></i>
@@ -159,25 +148,54 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label for="searchPoint" class="form-label">搜尋名稱、地址或電話</label>
-                                <input type="text" id="searchPoint" name="searchPoint" class="form-control" 
-                                    placeholder="請輸入關鍵字">
+                                <input type="text" id="searchPoint" name="searchPoint" class="form-control" placeholder="請輸入關鍵字">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="sidebar-pane" id="fb">
-                <div class="fb-page" data-href="https://www.facebook.com/k.olc.tw/" data-tabs="timeline"
-                    data-width="380" data-small-header="false" data-adapt-container-width="true" data-hide-cover="false"
-                    data-show-facepile="true">
-                    <blockquote cite="https://www.facebook.com/k.olc.tw/" class="fb-xfbml-parse-ignore"><a
-                            href="https://www.facebook.com/k.olc.tw/">江明宗</a></blockquote>
+        </div>
+    </div>
+
+    <!-- Help Popup -->
+    <div id="help-popup" class="modal fade" tabindex="-1" aria-labelledby="helpPopupLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="helpPopupLabel">說明</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    注意事項：
+                    <ul>
+                        <li><a href="https://religion.moi.gov.tw/" target="_blank">資料來源</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="map" class="sidebar-map"></div>
+    <!-- Facebook Popup -->
+    <div id="fb-popup" class="modal fade" tabindex="-1" aria-labelledby="fbPopupLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fbPopupLabel">Facebook</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="fb-page" data-href="https://www.facebook.com/k.olc.tw/" data-tabs="timeline"
+                        data-width="100%" data-small-header="false" data-adapt-container-width="true" data-hide-cover="false"
+                        data-show-facepile="true">
+                        <blockquote cite="https://www.facebook.com/k.olc.tw/" class="fb-xfbml-parse-ignore"><a
+                                href="https://www.facebook.com/k.olc.tw/">江明宗</a></blockquote>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map" style="height: 100%; width: 100%;"></div>
     <div style="position: fixed; bottom: 0px; left: 0px;">
         <a href="https://facebook.com/k.olc.tw/" target="_blank" class="btn btn-lg alert-primary">北中西區台南市議員參選人江明宗 製作</a>
     </div>
@@ -188,7 +206,6 @@
         integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8"
         crossorigin="anonymous"></script>
     <script src="js/ol.js" type="text/javascript"></script>
-    <script src="js/ol5-sidebar.min.js" type="text/javascript"></script>
     <script src="js/main.js" type="text/javascript"></script>
     <script>
         if ('serviceWorker' in navigator) {
