@@ -248,6 +248,23 @@ function renderCountyBoundaries(geojson) {
       createCountyLabel(countyName, layer.getBounds().getCenter());
     }
   }).addTo(map);
+  
+  // If there's already a selected county (from URL hash), update the styling
+  if (selectedCounty) {
+    console.log('Applying initial county selection styling for:', selectedCounty);
+    countyBoundaryLayer.setStyle(function(feature) {
+      var fCountyName = getCountyName(feature);
+      var isSelected = selectedCounty === fCountyName;
+      
+      return {
+        fillColor: isSelected ? SACRED_COLORS.lightGold : SACRED_COLORS.warmWhite,
+        weight: isSelected ? 3 : 1,
+        opacity: isSelected ? 0.8 : 0.3,
+        color: isSelected ? SACRED_COLORS.gold : SACRED_COLORS.lightGold,
+        fillOpacity: isSelected ? 0.1 : 0.6
+      };
+    });
+  }
 }
 
 // Create or update county label
@@ -280,8 +297,11 @@ function createCountyLabel(countyName, position) {
 }
 
 // Unified county selection function
-function selectCounty(countyName) {
-  console.log('Selecting county:', countyName);
+function selectCounty(countyName, skipRouteUpdate) {
+  console.log('Selecting county:', countyName, 'skipRouteUpdate:', skipRouteUpdate);
+  
+  // Check if already selected
+  var wasAlreadySelected = selectedCounty === countyName;
   
   // Update selected county
   selectedCounty = countyName;
@@ -306,13 +326,36 @@ function selectCounty(countyName) {
         fillOpacity: isSelected ? 0.1 : 0.6
       };
     });
+  } else {
+    // If boundaries aren't loaded yet, wait and retry
+    console.log('Boundaries not loaded yet, will retry highlighting');
+    setTimeout(function() {
+      if (countyBoundaryLayer && selectedCounty === countyName) {
+        countyBoundaryLayer.setStyle(function(feature) {
+          var fCountyName = getCountyName(feature);
+          var isSelected = selectedCounty === fCountyName;
+          
+          return {
+            fillColor: isSelected ? SACRED_COLORS.lightGold : SACRED_COLORS.warmWhite,
+            weight: isSelected ? 3 : 1,
+            opacity: isSelected ? 0.8 : 0.3,
+            color: isSelected ? SACRED_COLORS.gold : SACRED_COLORS.lightGold,
+            fillOpacity: isSelected ? 0.1 : 0.6
+          };
+        });
+      }
+    }, 1000);
   }
   
-  // Load county data
-  loadCountyData(countyName);
+  // Load county data only if not already selected
+  if (!wasAlreadySelected) {
+    loadCountyData(countyName);
+  } else {
+    console.log('County already selected, skipping data reload');
+  }
   
-  // Update route
-  if (typeof routie !== 'undefined') {
+  // Update route only if not already on the correct route and not skipping route update
+  if (typeof routie !== 'undefined' && !wasAlreadySelected && !skipRouteUpdate) {
     routie('county/' + countyName);
   }
 }
@@ -541,6 +584,16 @@ function addMarkersToMap(geojsonData) {
 
 // Display point information in popup
 function displayPointInfo(county, uuid) {
+  // Check if county data is loaded
+  if (!pointsPool[county] || !pointsPool[county].features) {
+    console.log('County data not loaded yet for:', county);
+    // Try again after a delay
+    setTimeout(function() {
+      displayPointInfo(county, uuid);
+    }, 500);
+    return;
+  }
+  
   var features = pointsPool[county].features;
   var feature = features.find(f => f.properties.uuid === uuid);
   
@@ -675,20 +728,24 @@ function initializeRouting() {
     },
 
     'point/:county/:uuid': function (countyName, uuid) {
-      if (!pointsPool[countyName]) {
-        selectedCounty = countyName;
-        loadCountyData(countyName);
-        // Wait for data to load then display point
-        setTimeout(function() {
-          displayPointInfo(countyName, uuid);
-        }, 1000);
-      } else if(selectedCounty != countyName) {
-        selectedCounty = countyName;
-        addMarkersToMap(pointsPool[countyName]);
-        displayPointInfo(countyName, uuid);
-      } else {
-        displayPointInfo(countyName, uuid);
+      // Always use selectCounty to ensure boundary highlighting
+      // Pass true to skip route update since we're already on a point route
+      if (selectedCounty !== countyName) {
+        selectCounty(countyName, true);
       }
+      
+      // Wait for county data to be loaded before displaying point
+      var checkDataAndDisplay = function() {
+        if (pointsPool[countyName] && pointsPool[countyName].features) {
+          displayPointInfo(countyName, uuid);
+        } else {
+          // Check again in 200ms
+          setTimeout(checkDataAndDisplay, 200);
+        }
+      };
+      
+      // Start checking after a short initial delay
+      setTimeout(checkDataAndDisplay, 100);
     },
 
     'refresh/:timestamp': function(timestamp) {
