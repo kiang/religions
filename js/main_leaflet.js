@@ -6,6 +6,7 @@ var clusterGroup;
 var selectedCounty = '';
 var selectedGod = '';
 var currentFeature = false;
+var selectedMarkerUuid = null; // Track the currently selected marker
 var pointsPool = {};
 var searchData = [];
 var photoMapping = {};
@@ -76,6 +77,18 @@ function initMap() {
   });
 
   map.addLayer(clusterGroup);
+  
+  // Add click handler to clear selected marker when clicking on empty map areas
+  map.on('click', function(e) {
+    // Small delay to allow marker clicks to process first
+    setTimeout(function() {
+      // Only clear if we haven't just selected a new marker
+      var currentTime = Date.now();
+      if (!window.lastMarkerClickTime || (currentTime - window.lastMarkerClickTime) > 200) {
+        clearSelectedMarker();
+      }
+    }, 150);
+  });
 
   // Load county boundaries
   loadCountyBoundaries();
@@ -524,7 +537,8 @@ function addMarkersToMap(geojsonData) {
       
       try {
         var hasPhoto = photoMapping[props.uuid] ? true : false;
-        var icon = createSacredIcon(props['類型'], hasPhoto, false);
+        var isSelected = selectedMarkerUuid === props.uuid;
+        var icon = createSacredIcon(props['類型'], hasPhoto, isSelected);
         
         var marker = L.marker([coords[1], coords[0]], {
           icon: icon,
@@ -533,17 +547,25 @@ function addMarkersToMap(geojsonData) {
           properties: props
         });
         
-        marker.on('click', function(e) {
-          var timestamp = Date.now();
-          if (typeof routie !== 'undefined') {
-            routie('refresh/' + timestamp);
-            setTimeout(function() {
-              routie('point/' + props['行政區'] + '/' + props.uuid);
-            }, 1);
-          } else {
-            displayPointInfo(selectedCounty, props.uuid);
-          }
-        });
+        marker.on('click', (function(markerProps) {
+          return function(e) {
+            // Record marker click time to prevent map click from clearing selection
+            window.lastMarkerClickTime = Date.now();
+            
+            // Stop propagation to prevent map click handler
+            L.DomEvent.stopPropagation(e);
+            
+            var timestamp = Date.now();
+            if (typeof routie !== 'undefined') {
+              routie('refresh/' + timestamp);
+              setTimeout(function() {
+                routie('point/' + markerProps['行政區'] + '/' + markerProps.uuid);
+              }, 1);
+            } else {
+              displayPointInfo(selectedCounty, markerProps.uuid);
+            }
+          };
+        })(props));
         
         clusterGroup.addLayer(marker);
         addedCount++;
@@ -634,7 +656,12 @@ function displayPointInfo(county, uuid) {
           case '負責人': icon = '<i class="fa fa-user" style="margin-right: 8px; color: var(--sacred-purple);"></i>'; break;
           case '登記日期': icon = '<i class="fa fa-calendar" style="margin-right: 8px; color: var(--primary-gold);"></i>'; break;
         }
-        message += '<tr><th scope="row" style="width: 120px; font-weight: 500;">' + icon + field + '</th><td style="font-weight: 400;">' + p[field] + '</td></tr>';
+        // Special handling for deity field
+        if (field === '主祀神祇') {
+          message += '<tr><th scope="row" style="width: 120px; font-weight: 500;">' + icon + field + '</th><td style="font-weight: 400;"><a href="https://religion.olc.tw/deity/' + encodeURIComponent(p[field]) + '/index.html" target="_blank" style="color: var(--primary-gold); text-decoration: none; font-weight: 500;">' + p[field] + ' <i class="fa fa-external-link" style="font-size: 12px; margin-left: 4px;"></i></a></td></tr>';
+        } else {
+          message += '<tr><th scope="row" style="width: 120px; font-weight: 500;">' + icon + field + '</th><td style="font-weight: 400;">' + p[field] + '</td></tr>';
+        }
         displayedFields.add(field);
       }
     }
@@ -657,10 +684,14 @@ function displayPointInfo(county, uuid) {
     
     document.getElementById('pointPopupLabel').innerHTML = '<i class="fa fa-map-marker" style="margin-right: 8px;"></i>' + p['名稱'];
     content.innerHTML = message;
+    
+    // Update detail link
+    var detailLink = document.getElementById('detail-link');
+    if (detailLink) {
+      detailLink.href = 'https://religion.olc.tw/' + encodeURIComponent(county) + '/' + uuid + '/index.html';
+    }
+    
     pointPopup.show();
-
-    // Center the map on the selected point
-    map.setView([coords[1], coords[0]], Math.max(map.getZoom(), 14));
     
     // Update marker to show selected state
     updateSelectedMarker(uuid);
@@ -669,18 +700,26 @@ function displayPointInfo(county, uuid) {
 
 // Update selected marker styling
 function updateSelectedMarker(uuid) {
+  selectedMarkerUuid = uuid; // Store the selected marker UUID
+  
   clusterGroup.eachLayer(function(marker) {
-    if (marker.options.uuid === uuid) {
-      var props = marker.options.properties;
-      var hasPhoto = marker.options.hasPhoto;
-      var selectedIcon = createSacredIcon(props['類型'], hasPhoto, true);
-      marker.setIcon(selectedIcon);
-    } else {
-      var props = marker.options.properties;
-      var hasPhoto = marker.options.hasPhoto;
-      var normalIcon = createSacredIcon(props['類型'], hasPhoto, false);
-      marker.setIcon(normalIcon);
-    }
+    var props = marker.options.properties;
+    var hasPhoto = marker.options.hasPhoto;
+    var isSelected = marker.options.uuid === uuid;
+    var icon = createSacredIcon(props['類型'], hasPhoto, isSelected);
+    marker.setIcon(icon);
+  });
+}
+
+// Clear selected marker
+function clearSelectedMarker() {
+  selectedMarkerUuid = null;
+  
+  clusterGroup.eachLayer(function(marker) {
+    var props = marker.options.properties;
+    var hasPhoto = marker.options.hasPhoto;
+    var normalIcon = createSacredIcon(props['類型'], hasPhoto, false);
+    marker.setIcon(normalIcon);
   });
 }
 
