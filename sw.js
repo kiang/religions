@@ -1,4 +1,4 @@
-const CACHE_NAME = 'religion-map-v2.00000';
+const CACHE_NAME = 'religion-map-v2.00001';
 const urlsToCache = [
   'https://kiang.github.io/religions/',
   'https://kiang.github.io/religions/index.html',
@@ -22,6 +22,9 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', function(event) {
+  // Force the new service worker to activate immediately
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(function(cache) {
@@ -78,6 +81,8 @@ self.addEventListener('fetch', function(event) {
 
 self.addEventListener('activate', function(event) {
   var cacheWhitelist = [CACHE_NAME];
+  
+  // Take control of all pages immediately
   event.waitUntil(
     caches.keys().then(function(cacheNames) {
       return Promise.all(
@@ -87,6 +92,9 @@ self.addEventListener('activate', function(event) {
           }
         })
       );
+    }).then(function() {
+      // Force all tabs to use the new service worker
+      return self.clients.claim();
     })
   );
 });
